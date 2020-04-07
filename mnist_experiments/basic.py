@@ -10,6 +10,16 @@ from torchvision.transforms import Compose, ToTensor
 
 
 class BasicMNIST(pl.LightningModule):
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        from argparse import ArgumentParser
+        parser = ArgumentParser(parents=[parent_parser])
+        parser.add_argument('--conv1', type=int, default=32)
+        parser.add_argument('--conv2', type=int, default=64)
+        parser.add_argument('--fc1', type=int, default=10)
+        return parser
+
     def __init__(self, params):
         super().__init__()
         self.params = params
