@@ -27,7 +27,7 @@ def main():
         early_stop_callback=early_stopping,
         checkpoint_callback=checkpoints,
         log_gpu_memory='all',
-        logger=VisdomLogger(delete_env_on_start=True),
+        logger=VisdomLogger(),
         gpus=args.gpus
     )
     net = args.experiment(args)

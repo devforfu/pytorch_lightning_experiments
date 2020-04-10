@@ -18,7 +18,6 @@ class VisdomLogger(LightningLoggerBase):
             server: Optional[str] = '0.0.0.0',
             port: Optional[int] = 9090,
             log_freq: int = 1,
-            delete_env_on_start: bool = False,
             experiment=None
     ):
         super().__init__()
@@ -29,7 +28,6 @@ class VisdomLogger(LightningLoggerBase):
         self._server = server
         self._port = port
         self._log_freq = log_freq
-        self._delete_env_on_start = delete_env_on_start
         self._experiment = experiment or self._init()
 
     def _init(self):
@@ -38,10 +36,7 @@ class VisdomLogger(LightningLoggerBase):
             port=self._port,
             username=self._username,
             password=self._password,
-            env=self._env
-        )
-        if self._delete_env_on_start:
-            experiment.delete_env(self._env)
+            env=self._env)
         return experiment
 
     @property
