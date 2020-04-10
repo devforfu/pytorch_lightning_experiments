@@ -94,20 +94,6 @@ class VisdomLogger(LightningLoggerBase):
                         opts=dict(title=f'{key} (avg/epoch)'),
                         update='append')
 
-        # opt_state = metrics.get('opt_state', {})
-        # for key, value in opt_state.items():
-        #     opt, group, param = key.split('__')
-        #     title = f'{param} ({opt}.{group})'
-        #     self.vis.line(
-        #         X=[step], Y=[value], win=key, name=param,
-        #         opts=dict(title=title), update='append'
-        #     )
-        # for index, memory in gpu_params(metrics):
-        #     self.vis.line(
-        #         X=[step], Y=[memory], win='gpu', name=f'cuda:{index}',
-        #         opts=dict(title='GPU Memory'), update='append'
-        #     )
-
 
     @rank_zero_only
     def log_hyperparams(self, params: Dict):
