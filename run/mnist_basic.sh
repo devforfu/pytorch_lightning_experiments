@@ -3,6 +3,6 @@ python main.py \
   --arch configs/mnist_basic.json \
   --num-workers 12 \
   --gpus 0 \
-  --epochs 20 \
-  --batch-size 2048 \
+  --epochs 50 \
+  --batch-size 1048 \
   --half-precision

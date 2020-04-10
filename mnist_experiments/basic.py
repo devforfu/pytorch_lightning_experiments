@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import pytorch_lightning as pl
 import torch
@@ -20,6 +20,7 @@ class BasicMNIST(pl.LightningModule):
         self.fc1 = nn.Linear(arch.conv2 * 7 * 7, arch.fc1)
         self.fc2 = nn.Linear(arch.fc1, 10)
         self.datasets = {}
+        self.avg_epoch_metrics = defaultdict(list)
         self.hparams = params
 
     def forward(self, x):
@@ -61,22 +62,26 @@ class BasicMNIST(pl.LightningModule):
         x, y = batch
         out = self(x)
         loss = F.nll_loss(out, y)
-        logs = {'trn_loss': loss,
+        logs = {'stage': 'batch',
+                'metrics': {'loss': loss},
                 'opt_state': get_optimizer_parameters(self.trainer.optimizers)}
+        self.avg_epoch_metrics['train'].append({'loss': loss.detach().cpu()})
         return {'loss': loss, 'log': logs}
 
     def validation_step(self, batch, batch_no):
         x, y = batch
         out = self(x)
         loss = F.nll_loss(out, y)
-        logs = {'val_loss': loss}
-        return {'val_loss': loss, 'log': logs}
+        self.avg_epoch_metrics['valid'].append({'loss': loss.detach().cpu()})
+        return {'val_loss': loss}
 
     def validation_epoch_end(self, outputs: list):
+        history = {'stage': 'epoch',
+                   'history': self.avg_epoch_metrics.copy(),
+                   'current_epoch': self.trainer.current_epoch}
+        self.avg_epoch_metrics = defaultdict(list)
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        logs = {'avg_val_loss': avg_loss}
-        return {'avg_val_loss': avg_loss, 'log': logs}
-
+        return {'avg_val_loss': avg_loss, 'log': history}
 
 
 def get_optimizer_parameters(optimizers: list, names: tuple = ('lr', 'weight_decay')) -> dict:

@@ -3,11 +3,12 @@ from addict import Dict
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from cli import default_parser
-from logger import VisdomLogger
+from loggers.wandb import WandbLogger
+from loggers.visdom import VisdomLogger
 
 
 def main():
-    args = pl.Trainer.add_argparse_args(default_parser()).parse_args()
+    experiment, args = create_experiment()
     checkpoints = ModelCheckpoint(
         filepath='/tmp/%s/{epoch:d}_{avg_val_loss:.2f}' % args.experiment,
         monitor='avg_val_loss',
@@ -27,11 +28,20 @@ def main():
         early_stop_callback=early_stopping,
         checkpoint_callback=checkpoints,
         log_gpu_memory='all',
+        # logger=WandbLogger(),
         logger=VisdomLogger(),
         gpus=args.gpus
     )
-    net = args.experiment(args)
+    net = experiment(args)
     assert trainer.fit(net) == 1, 'Training failed!'
+
+
+def create_experiment() -> Dict:
+    parser = pl.Trainer.add_argparse_args(default_parser())
+    config = Dict(vars(parser.parse_args()))
+    experiment = config.pop('experiment')
+    del config['kwargs']
+    return experiment, config
 
 
 if __name__ == '__main__':
