@@ -11,61 +11,69 @@ class VisdomLogger(LightningLoggerBase):
 
     def __init__(
             self,
-            name: str = 'default',
+            env: str = 'main',
             version: int = 1,
             username: Optional[str] = None,
             password: Optional[str] = None,
             server: Optional[str] = '0.0.0.0',
             port: Optional[int] = 9090,
             log_freq: int = 1,
+            delete_env_on_start: bool = False,
             experiment=None
     ):
         super().__init__()
-        self._name = name
-        self._version = version or os.getenv('VISDOM_USERNAME')
-        self._username = username or os.getenv('VISDOM_PASSWORD')
-        self._password = password
+        self._env = env
+        self._version = version
+        self._username = username or os.getenv('VISDOM_USERNAME')
+        self._password = password or os.getenv('VISDOM_PASSWORD')
         self._server = server
         self._port = port
         self._log_freq = log_freq
-        self._experiment = experiment
+        self._delete_env_on_start = delete_env_on_start
+        self._experiment = experiment or self._init()
+
+    def _init(self):
+        experiment = Visdom(
+            server=self._server,
+            port=self._port,
+            username=self._username,
+            password=self._password,
+            env=self._env
+        )
+        if self._delete_env_on_start:
+            experiment.delete_env(self._env)
+        return experiment
 
     @property
     def vis(self):
-        return self._experiment
+        return self.experiment
 
     @property
     def experiment(self) -> Any:
-        if self._experiment is None:
-            self._experiment = Visdom(
-                server=self._server,
-                port=self._port,
-                username=self._username,
-                password=self._password
-            )
         return self._experiment
 
     @rank_zero_only
     def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None):
+        if (step % self._log_freq) != 0:
+            return
         opt_state = metrics.get('opt_state', {})
         for key, value in opt_state.items():
             opt, group, param = key.split('__')
             title = f'{param} ({opt}.{group})'
             self.vis.line(
-                X=[step], y=[value], win=title, name=param,
+                X=[step], Y=[value], win=key, name=param,
                 opts=dict(title=title), update='append'
             )
-        if step % self._log_freq:
-            for index, memory in gpu_params(metrics):
-                self.vis.line(
-                    X=[step], y=[memory], win='gpu', name=index,
-                    opts=dict(title='GPU Memory'), update='append'
-                )
-            for phase, loss in batch_loss_metrics(metrics):
-                self.vis.line(
-                    X=[step], y=[memory],
-                )
-
+        for index, memory in gpu_params(metrics):
+            self.vis.line(
+                X=[step], Y=[memory], win='gpu', name=f'cuda:{index}',
+                opts=dict(title='GPU Memory'), update='append'
+            )
+        for phase, loss in batch_loss_metrics(metrics):
+            self.vis.line(
+                X=[step], Y=[loss], win='loss', name=phase,
+                opts=dict(title='Batch Loss'), update='append'
+            )
 
     @rank_zero_only
     def log_hyperparams(self, params: Dict):
@@ -77,7 +85,7 @@ class VisdomLogger(LightningLoggerBase):
 
     @property
     def name(self) -> str:
-        return self._name
+        return self._env
 
     @property
     def version(self) -> Union[int, str]:

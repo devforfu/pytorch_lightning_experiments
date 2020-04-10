@@ -10,6 +10,7 @@ def main():
     args = pl.Trainer.add_argparse_args(default_parser()).parse_args()
     checkpoints = ModelCheckpoint(
         filepath='/tmp/%s/{epoch:d}_{avg_val_loss:.2f}' % args.experiment,
+        monitor='avg_val_loss',
         save_top_k=3,
         mode='min'
     )
@@ -26,7 +27,7 @@ def main():
         early_stop_callback=early_stopping,
         checkpoint_callback=checkpoints,
         log_gpu_memory='all',
-        logger=VisdomLogger(),
+        logger=VisdomLogger(delete_env_on_start=True),
         gpus=args.gpus
     )
     net = args.experiment(args)
