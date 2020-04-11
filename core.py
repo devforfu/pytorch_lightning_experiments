@@ -1,8 +1,11 @@
 from abc import ABC
-from collections import defaultdict, OrderedDict
+from collections import defaultdict, OrderedDict, Callable
+from typing import List
 
 import numpy as np
 import pytorch_lightning as pl
+import torch
+import torch.nn as nn
 
 from utils import to_np
 
@@ -57,3 +60,62 @@ class BaseExperiment(pl.LightningModule, ABC):
                         continue
                     params[f'opt_{i}__group_{j}__{param}'] = value
         return params
+
+
+class AdaptiveConcatPool2d(nn.Module):
+    """Applies average and maximal adaptive pooling to the tensor and
+    concatenates results into a single tensor.
+
+    The idea is taken from fastai library.
+    """
+    def __init__(self, size=1):
+        super().__init__()
+        self.avg = nn.AdaptiveAvgPool2d(size)
+        self.max = nn.AdaptiveMaxPool2d(size)
+
+    def forward(self, x):
+        return torch.cat([self.max(x), self.avg(x)], 1)
+
+
+def create_head(feat_dim: int, n_classes: int, drop: float = 0.25):
+    return nn.Sequential(
+        nn.Dropout(drop),
+        nn.Linear(feat_dim * 2, feat_dim),
+        nn.BatchNorm1d(feat_dim),
+        nn.LeakyReLU(inplace=True),
+        nn.Linear(feat_dim, n_classes))
+
+
+class MultiHead(nn.Module):
+    def __init__(
+            self,
+            feat_dim: int,
+            n_classes: List,
+            head_fn: Callable = create_head,
+            **head_params
+    ):
+        super().__init__()
+        self.heads = nn.ModuleList([
+            head_fn(feat_dim, n, **head_params)
+            for n in n_classes])
+
+    def forward(self, x):
+        return torch.cat([head(x) for head in self.heads])
+
+
+class BaseHeadNet(nn.Module):
+    def __init__(self, base, pool, head, base_method='features'):
+        super().__init__()
+        self.base = base
+        self.pool = pool
+        self.head = head
+        self.base_method = base_method
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.pool(x)
+        x = self.head(x.squeeze())
+        return x.squeeze()
+
+    def features(self, x):
+        return getattr(self.base, self.base_method)(x)

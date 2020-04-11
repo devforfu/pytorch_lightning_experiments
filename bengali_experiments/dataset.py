@@ -2,10 +2,14 @@ from collections import OrderedDict
 from typing import Tuple, Callable
 
 import numpy as np
+import torch
+from torch import nn
 from torch.utils.data import Dataset
+from torch.nn.functional import cross_entropy
 
 import logger
-from bengali_experiments import TRN_NUMPY, TRN_IMAGE_IDS, LABELS
+from bengali_experiments import TRN_NUMPY, TRN_IMAGE_IDS, LABELS, N_CLASSES
+from utils import adjacent_pairs
 
 log = logger.get_logger()
 
@@ -35,10 +39,12 @@ def no_aug(x): return {'image': x}
 
 
 class BengaliDataset(Dataset):
-    def __init__(self,
-                 data, ids, labels,
-                 subset: list = None,
-                 transform: Callable = no_aug):
+    def __init__(
+            self,
+            data, ids, labels,
+            subset: list = None,
+            transform: Callable = no_aug
+    ):
         self.data = data
         self.ids = ids
         self.labels = labels
@@ -66,3 +72,31 @@ class BengaliDataset(Dataset):
         if self.subset is None:
             return index
         return self.subset[index]
+
+
+class ThreeLabelsCE(nn.Module):
+    def __init__(
+            self,
+            n_classes: tuple = N_CLASSES,
+            weights: tuple = (.5, .25, .25),
+            device: torch.device = 'cpu'
+    ):
+        super().__init__()
+        assert len(n_classes) == len(weights), 'Weights list does not match classes!'
+        self.n_classes = n_classes
+        self.weights = list(weights)
+        self.device = device
+        self.ranges = list(adjacent_pairs([0] + list(np.cumsum(n_classes))))
+        self.i = 0
+
+    def forward(self, x, targets):
+        losses = []
+        for i, (lo, hi) in enumerate(self.ranges):
+            ce = cross_entropy(x[:, lo:hi], targets[:, i].long())
+            losses.append(ce)
+        loss = torch.sum(torch.stack(losses).mul(self._weights))
+        return loss
+
+    @property
+    def _weights(self):
+        return torch.FloatTensor(self.weights).to(self.device)
