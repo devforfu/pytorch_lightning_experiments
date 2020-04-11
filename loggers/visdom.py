@@ -1,6 +1,7 @@
 import os
 import re
 from collections import defaultdict
+from itertools import chain
 from typing import Optional, Any, Dict, Union
 
 import torch
@@ -51,10 +52,7 @@ class VisdomLogger(LightningLoggerBase):
 
     @rank_zero_only
     def log_metrics(self, metrics: Dict, step: Optional[int] = None):
-        if (step % self._log_freq) != 0:
-            return
-
-        if metrics['stage'] == 'batch':
+        if metrics['stage'] == 'batch' and (step % self._log_freq) == 0:
             gpu_keys = [key for key in metrics if key.startswith('gpu_')]
             for key in gpu_keys:
                 self.vis.line(
@@ -75,25 +73,36 @@ class VisdomLogger(LightningLoggerBase):
                     update='append')
 
         elif metrics['stage'] == 'epoch':
-            avg_scores = defaultdict(dict)
-            for phase, history in metrics['history'].items():
-                collected = defaultdict(list)
-                for entry in history:
-                    for key, value in entry.items():
-                        collected[key].append(value)
-                for key, values in collected.items():
-                    avg_metric = torch.mean(torch.stack(values))
-                    avg_scores[key][phase] = avg_metric
-            phases = list(metrics['history'])
-            for key in avg_scores:
+            avg_scores = metrics['average']
+            phases = list(avg_scores)
+            keys = set(chain(*[list(metrics) for metrics in avg_scores.values()]))
+            for key in keys:
                 for phase in phases:
-                    avg = avg_scores[key][phase]
+                    avg = avg_scores[phase][key]
                     self.vis.line(
                         X=[metrics['current_epoch']], Y=[avg],
                         win=f'avg_{key}', name=phase,
                         opts=dict(title=f'{key} (avg/epoch)'),
                         update='append')
 
+        #     avg_scores = defaultdict(dict)
+        #     for phase, history in metrics['history'].items():
+        #         collected = defaultdict(list)
+        #         for entry in history:
+        #             for key, value in entry.items():
+        #                 collected[key].append(value)
+        #         for key, values in collected.items():
+        #             avg_metric = torch.mean(torch.stack(values))
+        #             avg_scores[key][phase] = avg_metric
+        #     phases = list(metrics['history'])
+        #     for key in avg_scores:
+        #         for phase in phases:
+        #             avg = avg_scores[key][phase]
+        #             self.vis.line(
+        #                 X=[metrics['current_epoch']], Y=[avg],
+        #                 win=f'avg_{key}', name=phase,
+        #                 opts=dict(title=f'{key} (avg/epoch)'),
+        #                 update='append')
 
     @rank_zero_only
     def log_hyperparams(self, params: Dict):
