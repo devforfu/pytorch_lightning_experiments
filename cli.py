@@ -17,6 +17,8 @@ def default_parser():
     p.add_argument('--num-workers', default=cpu_count(), type=int)
     p.add_argument('--workdir', default='/tmp')
     p.add_argument('--arch', type=read_config, default=None)
+    p.add_argument('--monitor-metric', default='avg_val_loss')
+    p.add_argument('--monitor-mode', default='min')
     return p
 
 

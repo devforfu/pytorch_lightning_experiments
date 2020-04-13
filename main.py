@@ -9,15 +9,15 @@ from loggers.visdom import VisdomLogger
 def main():
     experiment, args = create_experiment()
     checkpoints = ModelCheckpoint(
-        filepath='/tmp/%s/{epoch:d}_{avg_valid_loss:.2f}' % args.experiment.__name__,
-        monitor='avg_valid_loss',
+        filepath='/tmp/%s/{epoch:d}_{avg_valid_loss:.2f}' % experiment.__name__,
+        monitor=args.monitor_metric,
+        mode=args.monitor_mode,
         save_top_k=3,
-        mode='min'
     )
     early_stopping = EarlyStopping(
-        monitor='avg_valid_loss',
-        patience=3,
-        mode='min'
+        monitor=args.monitor_metric,
+        mode=args.monitor_mode,
+        patience=3
     )
     trainer = pl.Trainer(
         max_epochs=args.epochs,

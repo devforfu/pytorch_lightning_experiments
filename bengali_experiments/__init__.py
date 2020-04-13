@@ -6,6 +6,6 @@ LABELS_SMALL = DATA/'labels_small.csv'
 TRN_NUMPY = DATA/'tmp'/'train.npy'
 TRN_IMAGE_IDS = DATA/'tmp'/'image_ids.npy'
 
-SIZE = 137, 236
-NUM_PIX_COLS = SIZE[0] * SIZE[1]
+IMG_SIZE = 137, 236
+NUM_PIX_COLS = IMG_SIZE[0] * IMG_SIZE[1]
 N_CLASSES = 168, 11, 7
