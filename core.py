@@ -4,6 +4,7 @@ from typing import List
 
 import numpy as np
 import pytorch_lightning as pl
+import scipy.special
 import torch
 import torch.nn as nn
 
@@ -119,3 +120,30 @@ class BaseHeadNet(nn.Module):
 
     def features(self, x):
         return getattr(self.base, self.base_method)(x)
+
+
+
+
+def softmax_logits(f):
+    from functools import wraps
+
+    @wraps(f)
+    def wrapped(logits, targets):
+        predictions = scipy.special.softmax(logits, axis=1).argmax(axis=1)
+        return f(targets, predictions)
+
+    return wrapped
+
+
+@softmax_logits
+def recall(predictions, targets):
+    from sklearn.metrics import recall_score
+    score = recall_score(targets, predictions, average='macro')
+    return score
+
+
+@softmax_logits
+def accuracy(predictions, targets):
+    from sklearn.metrics import accuracy_score
+    score = accuracy_score(targets, predictions)
+    return score

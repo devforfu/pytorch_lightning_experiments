@@ -85,25 +85,6 @@ class VisdomLogger(LightningLoggerBase):
                         opts=dict(title=f'{key} (avg/epoch)'),
                         update='append')
 
-        #     avg_scores = defaultdict(dict)
-        #     for phase, history in metrics['history'].items():
-        #         collected = defaultdict(list)
-        #         for entry in history:
-        #             for key, value in entry.items():
-        #                 collected[key].append(value)
-        #         for key, values in collected.items():
-        #             avg_metric = torch.mean(torch.stack(values))
-        #             avg_scores[key][phase] = avg_metric
-        #     phases = list(metrics['history'])
-        #     for key in avg_scores:
-        #         for phase in phases:
-        #             avg = avg_scores[key][phase]
-        #             self.vis.line(
-        #                 X=[metrics['current_epoch']], Y=[avg],
-        #                 win=f'avg_{key}', name=phase,
-        #                 opts=dict(title=f'{key} (avg/epoch)'),
-        #                 update='append')
-
     @rank_zero_only
     def log_hyperparams(self, params: Dict):
         pass

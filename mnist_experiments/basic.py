@@ -7,13 +7,16 @@ from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, ToTensor
 
-from core import BaseExperiment
+from core import BaseExperiment, recall, accuracy
 
 
 class BasicMNIST(BaseExperiment):
 
     def __init__(self, params, metrics=None):
-        super().__init__(params, metrics)
+        super().__init__(params, metrics=(
+            [recall, accuracy] if metrics is None else
+            [] if metrics is False else
+            metrics))
         arch = params.arch
         self.conv1 = nn.Conv2d(1, arch.conv1, 3, 2, 1)
         self.conv2 = nn.Conv2d(arch.conv1, arch.conv2, 3, 2, 1)
@@ -22,7 +25,6 @@ class BasicMNIST(BaseExperiment):
         self.datasets = {}
         self.epoch_metrics = defaultdict(list)
         self.hparams = params
-        self.metrics = metrics or []
 
     def forward(self, x):
         x = F.leaky_relu(self.conv1(x))
